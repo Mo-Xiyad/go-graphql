@@ -1,5 +1,7 @@
 type Query {
   users: [User!]!
+  companies: [Company!]!
+  company(id: ID!): Company!
 }
 
 type User {
@@ -13,4 +15,5 @@ input NewUser {
 }
 type Mutation {
   createUser(input: NewUser!): User!
+  createCompany(input: CreateCompanyInput!): Company!
 }

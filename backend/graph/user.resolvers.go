@@ -7,19 +7,22 @@ package graph
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	model1 "server/graph/model"
 	"server/pkg/model"
 
 	"gorm.io/gorm"
 )
 
 // CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) (*model.User, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input model1.NewUser) (*model.User, error) {
 	db, ok := ctx.Value("DB").(*gorm.DB)
 	if !ok {
 		return nil, fmt.Errorf("failed to get database instance from context")
 	}
 
-	user := model.UserModel{
+	user := model.User{
+		ID:    rand.Uint64(),
 		Name:  input.Name,
 		Email: input.Email,
 	}
@@ -27,11 +30,16 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input model.NewUser) 
 		return nil, err
 	}
 	return &model.User{
-		ID:    string(user.ID),
+		ID:    user.ID,
 		Name:  user.Name,
 		Email: user.Email,
 	}, nil
 	// return &user, nil
+}
+
+// CreateCompany is the resolver for the createCompany field.
+func (r *mutationResolver) CreateCompany(ctx context.Context, input model1.CreateCompanyInput) (*model1.Company, error) {
+	panic(fmt.Errorf("not implemented: CreateCompany - createCompany"))
 }
 
 // Users is the resolver for the users field.
@@ -41,7 +49,7 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 		return nil, fmt.Errorf("failed to get database instance from context")
 	}
 
-	var usersFromDb []*model.UserModel
+	var usersFromDb []*model.User
 	if err := db.Find(&usersFromDb).Error; err != nil {
 		return nil, err
 	}
@@ -49,7 +57,7 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	var users []*model.User
 	for _, userModel := range usersFromDb {
 		user := &model.User{
-			ID:    fmt.Sprint(userModel.ID),
+			ID:    userModel.ID,
 			Name:  userModel.Name,
 			Email: userModel.Email,
 		}
@@ -59,11 +67,30 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 	return users, nil
 }
 
+// Companies is the resolver for the companies field.
+func (r *queryResolver) Companies(ctx context.Context) ([]*model1.Company, error) {
+	panic(fmt.Errorf("not implemented: Companies - companies"))
+}
+
+// Company is the resolver for the company field.
+func (r *queryResolver) Company(ctx context.Context, id string) (*model1.Company, error) {
+	panic(fmt.Errorf("not implemented: Company - company"))
+}
+
+// ID is the resolver for the id field.
+func (r *userResolver) ID(ctx context.Context, obj *model.User) (string, error) {
+	return fmt.Sprintf("%d", obj.ID), nil // Assuming ID is a uint64
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
+// User returns UserResolver implementation.
+func (r *Resolver) User() UserResolver { return &userResolver{r} }
+
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type userResolver struct{ *Resolver }

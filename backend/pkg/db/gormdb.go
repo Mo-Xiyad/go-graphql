@@ -23,8 +23,8 @@ func InitializeDB() (*gorm.DB, error) {
 	}
 
 	log.Println("Database connection successfully established")
-	db.AutoMigrate(&model.UserModel{})
-	db.AutoMigrate(&model.CompanyModel{})
+	db.AutoMigrate(&model.User{})
+	db.AutoMigrate(&model.Company{})
 
 	return db, nil
 }

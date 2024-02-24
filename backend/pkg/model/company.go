@@ -5,7 +5,7 @@ import (
 )
 
 // User corresponds to a user in the database.
-type CompanyModel struct {
+type Company struct {
 	gorm.Model
 	Name   string
 	Domain string `gorm:"unique"`

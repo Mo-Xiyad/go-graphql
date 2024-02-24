@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserModel struct {
+type User struct {
 	gorm.Model `gorm:"-"`
 	ID         uint64 `gorm:"primaryKey"`
 	Name       string

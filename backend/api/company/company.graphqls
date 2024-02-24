@@ -1,0 +1,10 @@
+type Company {
+  id: ID!
+  name: String!
+  email: String!
+}
+
+input CreateCompanyInput {
+  name: String!
+  email: String!
+}
