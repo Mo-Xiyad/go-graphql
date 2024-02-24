@@ -1,6 +1,6 @@
 type Query {
-  users: [User!]!
-  user(id: ID!): User!
-  companies: [Company!]!
-  company(id: ID!): Company!
+  GetAllUsers: [User!]!
+  GetUser(id: ID!): User!
+  GetAllCompanies: [Company!]!
+  GetCompany(id: ID!): Company!
 }

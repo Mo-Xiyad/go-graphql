@@ -12,27 +12,22 @@ import (
 	"server/pkg/model"
 )
 
-// Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
+func (r *queryResolver) GetAllUsers(ctx context.Context) ([]*model.User, error) {
 	return api.GetAllUsers(ctx)
 }
 
-// User is the resolver for the user field.
-func (r *queryResolver) User(ctx context.Context, id string) (*model.User, error) {
+func (r *queryResolver) GetUser(ctx context.Context, id string) (*model.User, error) {
 	return api.GetUser(ctx, id)
 }
 
-// Companies is the resolver for the companies field.
-func (r *queryResolver) Companies(ctx context.Context) ([]*model.Company, error) {
-	panic(fmt.Errorf("not implemented: Companies - companies"))
+func (r *queryResolver) GetAllCompanies(ctx context.Context) ([]*model.Company, error) {
+	panic(fmt.Errorf("not implemented: GetAllCompanies - GetAllCompanies"))
 }
 
-// Company is the resolver for the company field.
-func (r *queryResolver) Company(ctx context.Context, id string) (*model.Company, error) {
-	panic(fmt.Errorf("not implemented: Company - company"))
+func (r *queryResolver) GetCompany(ctx context.Context, id string) (*model.Company, error) {
+	panic(fmt.Errorf("not implemented: GetCompany - GetCompany"))
 }
 
-// Query returns graph.QueryResolver implementation.
 func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
