@@ -1,0 +1,4 @@
+type Mutation {
+  createUser(input: NewUser!): User!
+  createCompany(input: CreateCompanyInput!): Company!
+}

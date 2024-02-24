@@ -41,6 +41,7 @@ import (
 	"context"
 	"log"
 	"server"
+	"server/cmd/resolvers"
 	generated "server/graph"
 	"server/pkg/db"
 
@@ -51,7 +52,7 @@ import (
 )
 
 func graphqlHandler(ctx *server.Context) gin.HandlerFunc {
-	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &generated.Resolver{}}))
+	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolvers.Resolver{}}))
 
 	return func(c *gin.Context) {
 

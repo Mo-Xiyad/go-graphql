@@ -2,12 +2,6 @@
 
 package model
 
-type Company struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-}
-
 type CreateCompanyInput struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`

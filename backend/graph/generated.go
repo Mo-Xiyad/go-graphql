@@ -39,6 +39,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Company() CompanyResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 	User() UserResolver
@@ -62,6 +63,7 @@ type ComplexityRoot struct {
 	Query struct {
 		Companies func(childComplexity int) int
 		Company   func(childComplexity int, id string) int
+		User      func(childComplexity int, id string) int
 		Users     func(childComplexity int) int
 	}
 
@@ -72,14 +74,20 @@ type ComplexityRoot struct {
 	}
 }
 
+type CompanyResolver interface {
+	ID(ctx context.Context, obj *model1.Company) (string, error)
+
+	Email(ctx context.Context, obj *model1.Company) (string, error)
+}
 type MutationResolver interface {
 	CreateUser(ctx context.Context, input model.NewUser) (*model1.User, error)
-	CreateCompany(ctx context.Context, input model.CreateCompanyInput) (*model.Company, error)
+	CreateCompany(ctx context.Context, input model.CreateCompanyInput) (*model1.Company, error)
 }
 type QueryResolver interface {
 	Users(ctx context.Context) ([]*model1.User, error)
-	Companies(ctx context.Context) ([]*model.Company, error)
-	Company(ctx context.Context, id string) (*model.Company, error)
+	User(ctx context.Context, id string) (*model1.User, error)
+	Companies(ctx context.Context) ([]*model1.Company, error)
+	Company(ctx context.Context, id string) (*model1.Company, error)
 }
 type UserResolver interface {
 	ID(ctx context.Context, obj *model1.User) (string, error)
@@ -167,6 +175,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Company(childComplexity, args["id"].(string)), true
+
+	case "Query.user":
+		if e.complexity.Query.User == nil {
+			break
+		}
+
+		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.User(childComplexity, args["id"].(string)), true
 
 	case "Query.users":
 		if e.complexity.Query.Users == nil {
@@ -303,7 +323,19 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../schema/company/company.graphqls", Input: `type Company {
+	{Name: "../schema/Mutation.graphqls", Input: `type Mutation {
+  createUser(input: NewUser!): User!
+  createCompany(input: CreateCompanyInput!): Company!
+}
+`, BuiltIn: false},
+	{Name: "../schema/Query.graphqls", Input: `type Query {
+  users: [User!]!
+  user(id: ID!): User!
+  companies: [Company!]!
+  company(id: ID!): Company!
+}
+`, BuiltIn: false},
+	{Name: "../schema/company.graphqls", Input: `type Company {
   id: ID!
   name: String!
   email: String!
@@ -314,13 +346,7 @@ input CreateCompanyInput {
   email: String!
 }
 `, BuiltIn: false},
-	{Name: "../schema/user/user.graphqls", Input: `type Query {
-  users: [User!]!
-  companies: [Company!]!
-  company(id: ID!): Company!
-}
-
-type User {
+	{Name: "../schema/user.graphqls", Input: `type User {
   id: ID!
   name: String!
   email: String!
@@ -328,10 +354,6 @@ type User {
 input NewUser {
   name: String!
   email: String!
-}
-type Mutation {
-  createUser(input: NewUser!): User!
-  createCompany(input: CreateCompanyInput!): Company!
 }
 `, BuiltIn: false},
 }
@@ -401,6 +423,21 @@ func (ec *executionContext) field_Query_company_args(ctx context.Context, rawArg
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field___Type_enumValues_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -439,7 +476,7 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Company_id(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
+func (ec *executionContext) _Company_id(ctx context.Context, field graphql.CollectedField, obj *model1.Company) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Company_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -453,7 +490,7 @@ func (ec *executionContext) _Company_id(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
+		return ec.resolvers.Company().ID(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -474,8 +511,8 @@ func (ec *executionContext) fieldContext_Company_id(ctx context.Context, field g
 	fc = &graphql.FieldContext{
 		Object:     "Company",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ID does not have child fields")
 		},
@@ -483,7 +520,7 @@ func (ec *executionContext) fieldContext_Company_id(ctx context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Company_name(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
+func (ec *executionContext) _Company_name(ctx context.Context, field graphql.CollectedField, obj *model1.Company) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Company_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -527,7 +564,7 @@ func (ec *executionContext) fieldContext_Company_name(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Company_email(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
+func (ec *executionContext) _Company_email(ctx context.Context, field graphql.CollectedField, obj *model1.Company) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Company_email(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -541,7 +578,7 @@ func (ec *executionContext) _Company_email(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Email, nil
+		return ec.resolvers.Company().Email(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -562,8 +599,8 @@ func (ec *executionContext) fieldContext_Company_email(ctx context.Context, fiel
 	fc = &graphql.FieldContext{
 		Object:     "Company",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -660,9 +697,9 @@ func (ec *executionContext) _Mutation_createCompany(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Company)
+	res := resTmp.(*model1.Company)
 	fc.Result = res
-	return ec.marshalNCompany2ᚖserverᚋgraphᚋmodelᚐCompany(ctx, field.Selections, res)
+	return ec.marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_createCompany(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -749,6 +786,69 @@ func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_user(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_user(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().User(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model1.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_user_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_companies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_companies(ctx, field)
 	if err != nil {
@@ -775,9 +875,9 @@ func (ec *executionContext) _Query_companies(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model.Company)
+	res := resTmp.([]*model1.Company)
 	fc.Result = res
-	return ec.marshalNCompany2ᚕᚖserverᚋgraphᚋmodelᚐCompanyᚄ(ctx, field.Selections, res)
+	return ec.marshalNCompany2ᚕᚖserverᚋpkgᚋmodelᚐCompanyᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_companies(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -827,9 +927,9 @@ func (ec *executionContext) _Query_company(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Company)
+	res := resTmp.(*model1.Company)
 	fc.Result = res
-	return ec.marshalNCompany2ᚖserverᚋgraphᚋmodelᚐCompany(ctx, field.Selections, res)
+	return ec.marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_company(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2976,7 +3076,7 @@ func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj inter
 
 var companyImplementors = []string{"Company"}
 
-func (ec *executionContext) _Company(ctx context.Context, sel ast.SelectionSet, obj *model.Company) graphql.Marshaler {
+func (ec *executionContext) _Company(ctx context.Context, sel ast.SelectionSet, obj *model1.Company) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, companyImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -2986,20 +3086,82 @@ func (ec *executionContext) _Company(ctx context.Context, sel ast.SelectionSet, 
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Company")
 		case "id":
-			out.Values[i] = ec._Company_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Company_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "name":
 			out.Values[i] = ec._Company_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "email":
-			out.Values[i] = ec._Company_email(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Company_email(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3108,6 +3270,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_users(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "user":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_user(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -3616,11 +3800,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNCompany2serverᚋgraphᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v model.Company) graphql.Marshaler {
+func (ec *executionContext) marshalNCompany2serverᚋpkgᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v model1.Company) graphql.Marshaler {
 	return ec._Company(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋgraphᚋmodelᚐCompanyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Company) graphql.Marshaler {
+func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋpkgᚋmodelᚐCompanyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.Company) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -3644,7 +3828,7 @@ func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋgraphᚋmodelᚐCompa
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNCompany2ᚖserverᚋgraphᚋmodelᚐCompany(ctx, sel, v[i])
+			ret[i] = ec.marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -3664,7 +3848,7 @@ func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋgraphᚋmodelᚐCompa
 	return ret
 }
 
-func (ec *executionContext) marshalNCompany2ᚖserverᚋgraphᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v *model.Company) graphql.Marshaler {
+func (ec *executionContext) marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v *model1.Company) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
