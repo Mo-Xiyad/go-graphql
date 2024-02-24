@@ -31,3 +31,18 @@ func (r *queryResolver) GetCompany(ctx context.Context, id string) (*model.Compa
 func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
+
+// /server
+//   /cmd                # Main applications for this project
+//     /resolvers        # resolvers for the GraphQL API
+//     /api              # all the logic code for the resolvers
+//     /server           # Entry point for the server
+//   /pkg                # Library code that's ok to use by external applications
+//     /db               # Database connectivity and query functions
+//     /model            # Data structures that represent the business logic
+//   /schema             # GraphQL API definitions and resolvers
+//   .env                # Environment variables for local development
+//   Dockerfile          # Dockerfile for containerization
+//   docker-compose.yml  # For orchestrating services (if using microservices)
+//   go.mod              # Go module definitions
+//   go.sum              # Go module checksums
