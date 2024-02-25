@@ -7,6 +7,7 @@ import (
 	model1 "server/graph/model"
 	"server/pkg/model"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -16,10 +17,16 @@ func CreateUser(ctx context.Context, input model1.NewUser) (*model.User, error) 
 		return nil, fmt.Errorf("failed to get database instance from context")
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
 	user := model.User{
-		ID:    rand.Uint64(),
-		Name:  input.Name,
-		Email: input.Email,
+		ID:       rand.Uint64(),
+		Name:     input.Name,
+		Email:    input.Email,
+		Password: string(hashedPassword),
 	}
 	if err := db.Create(&user).Error; err != nil {
 		return nil, err

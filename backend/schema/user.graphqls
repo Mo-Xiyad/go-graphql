@@ -6,4 +6,5 @@ type User {
 input NewUser {
   name: String!
   email: String!
+  password: String!
 }

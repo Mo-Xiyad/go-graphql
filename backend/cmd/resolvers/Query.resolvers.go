@@ -12,37 +12,27 @@ import (
 	"server/pkg/model"
 )
 
+// GetAllUsers is the resolver for the GetAllUsers field.
 func (r *queryResolver) GetAllUsers(ctx context.Context) ([]*model.User, error) {
 	return api.GetAllUsers(ctx)
 }
 
+// GetUser is the resolver for the GetUser field.
 func (r *queryResolver) GetUser(ctx context.Context, id string) (*model.User, error) {
 	return api.GetUser(ctx, id)
 }
 
+// GetAllCompanies is the resolver for the GetAllCompanies field.
 func (r *queryResolver) GetAllCompanies(ctx context.Context) ([]*model.Company, error) {
 	panic(fmt.Errorf("not implemented: GetAllCompanies - GetAllCompanies"))
 }
 
+// GetCompany is the resolver for the GetCompany field.
 func (r *queryResolver) GetCompany(ctx context.Context, id string) (*model.Company, error) {
 	panic(fmt.Errorf("not implemented: GetCompany - GetCompany"))
 }
 
+// Query returns graph.QueryResolver implementation.
 func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
 type queryResolver struct{ *Resolver }
-
-// /server
-//   /cmd                # Main applications for this project
-//     /resolvers        # resolvers for the GraphQL API
-//     /api              # all the logic code for the resolvers
-//     /server           # Entry point for the server
-//   /pkg                # Library code that's ok to use by external applications
-//     /db               # Database connectivity and query functions
-//     /model            # Data structures that represent the business logic
-//   /schema             # GraphQL API definitions and resolvers
-//   .env                # Environment variables for local development
-//   Dockerfile          # Dockerfile for containerization
-//   docker-compose.yml  # For orchestrating services (if using microservices)
-//   go.mod              # Go module definitions
-//   go.sum              # Go module checksums

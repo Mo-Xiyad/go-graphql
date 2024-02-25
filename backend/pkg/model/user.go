@@ -9,6 +9,7 @@ type User struct {
 	ID         uint64 `gorm:"primaryKey"`
 	Name       string
 	Email      string `gorm:"unique"`
+	Password   string
 }
 
 // 1 =  before generating the code for gql run the following
