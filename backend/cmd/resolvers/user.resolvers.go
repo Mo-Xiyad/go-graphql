@@ -8,15 +8,33 @@ import (
 	"context"
 	"fmt"
 	"server/graph"
+	gql_model "server/graph/model"
 	"server/pkg/model"
 )
+
+func mapUser(u model.User) *model.User {
+	return &model.User{
+		ID:    u.ID,
+		Email: u.Email,
+		Name:  u.Name,
+	}
+}
+
+// User is the resolver for the user field.
+func (r *authPayloadResolver) User(ctx context.Context, obj *gql_model.AuthPayload) (*model.User, error) {
+	return obj.User, nil
+}
 
 // ID is the resolver for the id field.
 func (r *userResolver) ID(ctx context.Context, obj *model.User) (string, error) {
 	return fmt.Sprintf("%d", obj.ID), nil // Assuming ID is a uint64
 }
 
+// AuthPayload returns graph.AuthPayloadResolver implementation.
+func (r *Resolver) AuthPayload() graph.AuthPayloadResolver { return &authPayloadResolver{r} }
+
 // User returns graph.UserResolver implementation.
 func (r *Resolver) User() graph.UserResolver { return &userResolver{r} }
 
+type authPayloadResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
