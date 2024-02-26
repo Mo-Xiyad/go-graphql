@@ -15,7 +15,7 @@ exec:
 # Where should any generated models go?
 model:
   filename: graph/model/models_gen.go
-  package: model
+  package: gql_model
 
 # Where should the resolver implementations go?
 resolver:
@@ -88,3 +88,7 @@ models:
   User:
     model:
       - server/pkg/model.User
+  AuthPayload:
+    fields:
+      user:
+        resolver: true
