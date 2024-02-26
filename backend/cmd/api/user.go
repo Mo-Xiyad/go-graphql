@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	model1 "server/graph/model"
+	gql_model "server/graph/model"
 	"server/pkg/model"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-func CreateUser(ctx context.Context, input model1.NewUser) (*model.User, error) {
+func CreateUser(ctx context.Context, input gql_model.NewUser) (*model.User, error) {
 	db, ok := ctx.Value("DB").(*gorm.DB)
 	if !ok {
 		return nil, fmt.Errorf("failed to get database instance from context")

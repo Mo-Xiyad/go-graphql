@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"server/graph/model"
-	model1 "server/pkg/model"
+	gql_model "server/graph/model"
+	"server/pkg/model"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -39,6 +39,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	AuthPayload() AuthPayloadResolver
 	Company() CompanyResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -49,6 +50,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AuthPayload struct {
+		Token func(childComplexity int) int
+		User  func(childComplexity int) int
+	}
+
 	Company struct {
 		Email func(childComplexity int) int
 		ID    func(childComplexity int) int
@@ -56,8 +62,9 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateCompany func(childComplexity int, input model.CreateCompanyInput) int
-		CreateUser    func(childComplexity int, input model.NewUser) int
+		CreateCompany func(childComplexity int, input gql_model.CreateCompanyInput) int
+		CreateUser    func(childComplexity int, input gql_model.NewUser) int
+		Login         func(childComplexity int, input gql_model.LoginInput) int
 	}
 
 	Query struct {
@@ -74,23 +81,27 @@ type ComplexityRoot struct {
 	}
 }
 
+type AuthPayloadResolver interface {
+	User(ctx context.Context, obj *gql_model.AuthPayload) (*model.User, error)
+}
 type CompanyResolver interface {
-	ID(ctx context.Context, obj *model1.Company) (string, error)
+	ID(ctx context.Context, obj *model.Company) (string, error)
 
-	Email(ctx context.Context, obj *model1.Company) (string, error)
+	Email(ctx context.Context, obj *model.Company) (string, error)
 }
 type MutationResolver interface {
-	CreateUser(ctx context.Context, input model.NewUser) (*model1.User, error)
-	CreateCompany(ctx context.Context, input model.CreateCompanyInput) (*model1.Company, error)
+	CreateUser(ctx context.Context, input gql_model.NewUser) (*model.User, error)
+	CreateCompany(ctx context.Context, input gql_model.CreateCompanyInput) (*model.Company, error)
+	Login(ctx context.Context, input gql_model.LoginInput) (*gql_model.AuthPayload, error)
 }
 type QueryResolver interface {
-	GetAllUsers(ctx context.Context) ([]*model1.User, error)
-	GetUser(ctx context.Context, id string) (*model1.User, error)
-	GetAllCompanies(ctx context.Context) ([]*model1.Company, error)
-	GetCompany(ctx context.Context, id string) (*model1.Company, error)
+	GetAllUsers(ctx context.Context) ([]*model.User, error)
+	GetUser(ctx context.Context, id string) (*model.User, error)
+	GetAllCompanies(ctx context.Context) ([]*model.Company, error)
+	GetCompany(ctx context.Context, id string) (*model.Company, error)
 }
 type UserResolver interface {
-	ID(ctx context.Context, obj *model1.User) (string, error)
+	ID(ctx context.Context, obj *model.User) (string, error)
 }
 
 type executableSchema struct {
@@ -111,6 +122,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "AuthPayload.token":
+		if e.complexity.AuthPayload.Token == nil {
+			break
+		}
+
+		return e.complexity.AuthPayload.Token(childComplexity), true
+
+	case "AuthPayload.user":
+		if e.complexity.AuthPayload.User == nil {
+			break
+		}
+
+		return e.complexity.AuthPayload.User(childComplexity), true
 
 	case "Company.email":
 		if e.complexity.Company.Email == nil {
@@ -143,7 +168,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateCompany(childComplexity, args["input"].(model.CreateCompanyInput)), true
+		return e.complexity.Mutation.CreateCompany(childComplexity, args["input"].(gql_model.CreateCompanyInput)), true
 
 	case "Mutation.createUser":
 		if e.complexity.Mutation.CreateUser == nil {
@@ -155,7 +180,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateUser(childComplexity, args["input"].(model.NewUser)), true
+		return e.complexity.Mutation.CreateUser(childComplexity, args["input"].(gql_model.NewUser)), true
+
+	case "Mutation.login":
+		if e.complexity.Mutation.Login == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_login_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.Login(childComplexity, args["input"].(gql_model.LoginInput)), true
 
 	case "Query.GetAllCompanies":
 		if e.complexity.Query.GetAllCompanies == nil {
@@ -225,6 +262,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateCompanyInput,
+		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputNewUser,
 	)
 	first := true
@@ -326,6 +364,7 @@ var sources = []*ast.Source{
 	{Name: "../schema/Mutation.graphqls", Input: `type Mutation {
   createUser(input: NewUser!): User!
   createCompany(input: CreateCompanyInput!): Company!
+  login(input: LoginInput!): AuthPayload!
 }
 `, BuiltIn: false},
 	{Name: "../schema/Query.graphqls", Input: `type Query {
@@ -356,6 +395,20 @@ input NewUser {
   email: String!
   password: String!
 }
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type AuthPayload {
+  token: String
+  user: User
+}
+# type AuthResponse {
+#   accessToken: String!
+#   user: User!
+# }
 `, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -367,7 +420,7 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_createCompany_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.CreateCompanyInput
+	var arg0 gql_model.CreateCompanyInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNCreateCompanyInput2serverᚋgraphᚋmodelᚐCreateCompanyInput(ctx, tmp)
@@ -382,10 +435,25 @@ func (ec *executionContext) field_Mutation_createCompany_args(ctx context.Contex
 func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.NewUser
+	var arg0 gql_model.NewUser
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNNewUser2serverᚋgraphᚋmodelᚐNewUser(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gql_model.LoginInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNLoginInput2serverᚋgraphᚋmodelᚐLoginInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -477,7 +545,97 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
-func (ec *executionContext) _Company_id(ctx context.Context, field graphql.CollectedField, obj *model1.Company) (ret graphql.Marshaler) {
+func (ec *executionContext) _AuthPayload_token(ctx context.Context, field graphql.CollectedField, obj *gql_model.AuthPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthPayload_token(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Token, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthPayload_token(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthPayload_user(ctx context.Context, field graphql.CollectedField, obj *gql_model.AuthPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AuthPayload_user(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AuthPayload().User(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.User)
+	fc.Result = res
+	return ec.marshalOUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AuthPayload_user(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthPayload",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "name":
+				return ec.fieldContext_User_name(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Company_id(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Company_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -521,7 +679,7 @@ func (ec *executionContext) fieldContext_Company_id(ctx context.Context, field g
 	return fc, nil
 }
 
-func (ec *executionContext) _Company_name(ctx context.Context, field graphql.CollectedField, obj *model1.Company) (ret graphql.Marshaler) {
+func (ec *executionContext) _Company_name(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Company_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -565,7 +723,7 @@ func (ec *executionContext) fieldContext_Company_name(ctx context.Context, field
 	return fc, nil
 }
 
-func (ec *executionContext) _Company_email(ctx context.Context, field graphql.CollectedField, obj *model1.Company) (ret graphql.Marshaler) {
+func (ec *executionContext) _Company_email(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Company_email(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -623,7 +781,7 @@ func (ec *executionContext) _Mutation_createUser(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateUser(rctx, fc.Args["input"].(model.NewUser))
+		return ec.resolvers.Mutation().CreateUser(rctx, fc.Args["input"].(gql_model.NewUser))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -635,7 +793,7 @@ func (ec *executionContext) _Mutation_createUser(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model1.User)
+	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx, field.Selections, res)
 }
@@ -686,7 +844,7 @@ func (ec *executionContext) _Mutation_createCompany(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateCompany(rctx, fc.Args["input"].(model.CreateCompanyInput))
+		return ec.resolvers.Mutation().CreateCompany(rctx, fc.Args["input"].(gql_model.CreateCompanyInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -698,7 +856,7 @@ func (ec *executionContext) _Mutation_createCompany(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model1.Company)
+	res := resTmp.(*model.Company)
 	fc.Result = res
 	return ec.marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx, field.Selections, res)
 }
@@ -735,6 +893,67 @@ func (ec *executionContext) fieldContext_Mutation_createCompany(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_login(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().Login(rctx, fc.Args["input"].(gql_model.LoginInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gql_model.AuthPayload)
+	fc.Result = res
+	return ec.marshalNAuthPayload2ᚖserverᚋgraphᚋmodelᚐAuthPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_login(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "token":
+				return ec.fieldContext_AuthPayload_token(ctx, field)
+			case "user":
+				return ec.fieldContext_AuthPayload_user(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AuthPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_login_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_GetAllUsers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_GetAllUsers(ctx, field)
 	if err != nil {
@@ -761,7 +980,7 @@ func (ec *executionContext) _Query_GetAllUsers(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model1.User)
+	res := resTmp.([]*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚕᚖserverᚋpkgᚋmodelᚐUserᚄ(ctx, field.Selections, res)
 }
@@ -813,7 +1032,7 @@ func (ec *executionContext) _Query_GetUser(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model1.User)
+	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalNUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx, field.Selections, res)
 }
@@ -876,7 +1095,7 @@ func (ec *executionContext) _Query_GetAllCompanies(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*model1.Company)
+	res := resTmp.([]*model.Company)
 	fc.Result = res
 	return ec.marshalNCompany2ᚕᚖserverᚋpkgᚋmodelᚐCompanyᚄ(ctx, field.Selections, res)
 }
@@ -928,7 +1147,7 @@ func (ec *executionContext) _Query_GetCompany(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model1.Company)
+	res := resTmp.(*model.Company)
 	fc.Result = res
 	return ec.marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx, field.Selections, res)
 }
@@ -1094,7 +1313,7 @@ func (ec *executionContext) fieldContext_Query___schema(ctx context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model1.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_User_id(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1138,7 +1357,7 @@ func (ec *executionContext) fieldContext_User_id(ctx context.Context, field grap
 	return fc, nil
 }
 
-func (ec *executionContext) _User_name(ctx context.Context, field graphql.CollectedField, obj *model1.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_name(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_User_name(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1182,7 +1401,7 @@ func (ec *executionContext) fieldContext_User_name(ctx context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _User_email(ctx context.Context, field graphql.CollectedField, obj *model1.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_email(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_User_email(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -2999,8 +3218,8 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputCreateCompanyInput(ctx context.Context, obj interface{}) (model.CreateCompanyInput, error) {
-	var it model.CreateCompanyInput
+func (ec *executionContext) unmarshalInputCreateCompanyInput(ctx context.Context, obj interface{}) (gql_model.CreateCompanyInput, error) {
+	var it gql_model.CreateCompanyInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3033,8 +3252,42 @@ func (ec *executionContext) unmarshalInputCreateCompanyInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj interface{}) (model.NewUser, error) {
-	var it model.NewUser
+func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj interface{}) (gql_model.LoginInput, error) {
+	var it gql_model.LoginInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"email", "password"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj interface{}) (gql_model.NewUser, error) {
+	var it gql_model.NewUser
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3082,9 +3335,78 @@ func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj inter
 
 // region    **************************** object.gotpl ****************************
 
+var authPayloadImplementors = []string{"AuthPayload"}
+
+func (ec *executionContext) _AuthPayload(ctx context.Context, sel ast.SelectionSet, obj *gql_model.AuthPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, authPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AuthPayload")
+		case "token":
+			out.Values[i] = ec._AuthPayload_token(ctx, field, obj)
+		case "user":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AuthPayload_user(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var companyImplementors = []string{"Company"}
 
-func (ec *executionContext) _Company(ctx context.Context, sel ast.SelectionSet, obj *model1.Company) graphql.Marshaler {
+func (ec *executionContext) _Company(ctx context.Context, sel ast.SelectionSet, obj *model.Company) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, companyImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -3222,6 +3544,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createCompany":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createCompany(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "login":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_login(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -3389,7 +3718,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 var userImplementors = []string{"User"}
 
-func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model1.User) graphql.Marshaler {
+func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj *model.User) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, userImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -3793,6 +4122,20 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNAuthPayload2serverᚋgraphᚋmodelᚐAuthPayload(ctx context.Context, sel ast.SelectionSet, v gql_model.AuthPayload) graphql.Marshaler {
+	return ec._AuthPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAuthPayload2ᚖserverᚋgraphᚋmodelᚐAuthPayload(ctx context.Context, sel ast.SelectionSet, v *gql_model.AuthPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AuthPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3808,11 +4151,11 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
-func (ec *executionContext) marshalNCompany2serverᚋpkgᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v model1.Company) graphql.Marshaler {
+func (ec *executionContext) marshalNCompany2serverᚋpkgᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v model.Company) graphql.Marshaler {
 	return ec._Company(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋpkgᚋmodelᚐCompanyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.Company) graphql.Marshaler {
+func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋpkgᚋmodelᚐCompanyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Company) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -3856,7 +4199,7 @@ func (ec *executionContext) marshalNCompany2ᚕᚖserverᚋpkgᚋmodelᚐCompany
 	return ret
 }
 
-func (ec *executionContext) marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v *model1.Company) graphql.Marshaler {
+func (ec *executionContext) marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ctx context.Context, sel ast.SelectionSet, v *model.Company) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -3866,7 +4209,7 @@ func (ec *executionContext) marshalNCompany2ᚖserverᚋpkgᚋmodelᚐCompany(ct
 	return ec._Company(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNCreateCompanyInput2serverᚋgraphᚋmodelᚐCreateCompanyInput(ctx context.Context, v interface{}) (model.CreateCompanyInput, error) {
+func (ec *executionContext) unmarshalNCreateCompanyInput2serverᚋgraphᚋmodelᚐCreateCompanyInput(ctx context.Context, v interface{}) (gql_model.CreateCompanyInput, error) {
 	res, err := ec.unmarshalInputCreateCompanyInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -3886,7 +4229,12 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) unmarshalNNewUser2serverᚋgraphᚋmodelᚐNewUser(ctx context.Context, v interface{}) (model.NewUser, error) {
+func (ec *executionContext) unmarshalNLoginInput2serverᚋgraphᚋmodelᚐLoginInput(ctx context.Context, v interface{}) (gql_model.LoginInput, error) {
+	res, err := ec.unmarshalInputLoginInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNNewUser2serverᚋgraphᚋmodelᚐNewUser(ctx context.Context, v interface{}) (gql_model.NewUser, error) {
 	res, err := ec.unmarshalInputNewUser(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -3906,11 +4254,11 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) marshalNUser2serverᚋpkgᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model1.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2serverᚋpkgᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
 	return ec._User(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUser2ᚕᚖserverᚋpkgᚋmodelᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*model1.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚕᚖserverᚋpkgᚋmodelᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.User) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -3954,7 +4302,7 @@ func (ec *executionContext) marshalNUser2ᚕᚖserverᚋpkgᚋmodelᚐUserᚄ(ct
 	return ret
 }
 
-func (ec *executionContext) marshalNUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model1.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4257,6 +4605,13 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	}
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOUser2ᚖserverᚋpkgᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._User(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

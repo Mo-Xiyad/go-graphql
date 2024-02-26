@@ -1,11 +1,11 @@
-// server/context.go
-
 package server
 
 import (
 	"context"
 	"fmt"
+	"server/config"
 	"server/pkg/db"
+	"server/types"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -14,14 +14,19 @@ import (
 type Context struct {
 	DB *gorm.DB
 }
+type contextKey string
+
+var (
+	contextAuthIDKey contextKey = "currentUserId"
+	ServerContextKey contextKey = "ServerContextKey"
+)
 
 // NewContext initializes a new application context.
-func NewContext() (*Context, error) {
-	db, err := db.InitializeDB()
+func NewContext(conf *config.Config) (*Context, error) {
+	db, err := db.InitializeDB(conf)
 	if err != nil {
 		return nil, err
 	}
-
 	return &Context{
 		DB: db,
 	}, nil
@@ -30,8 +35,17 @@ func NewContext() (*Context, error) {
 func WithDB(ctx context.Context, db *gorm.DB) context.Context {
 	return context.WithValue(ctx, "DB", db)
 }
+
+func GinContextToContextMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := context.WithValue(c.Request.Context(), ServerContextKey, c)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
 func GinContextFromContext(ctx context.Context) (*gin.Context, error) {
-	ginContext := ctx.Value("ServerContextKey")
+	ginContext := ctx.Value(ServerContextKey)
 	if ginContext == nil {
 		err := fmt.Errorf("could not retrieve gin.Context")
 		return nil, err
@@ -43,4 +57,21 @@ func GinContextFromContext(ctx context.Context) (*gin.Context, error) {
 		return nil, err
 	}
 	return gc, nil
+}
+
+func GetUserIDFromContext(ctx context.Context) (string, error) {
+	if ctx.Value(contextAuthIDKey) == nil {
+		return "", types.ErrNoUserIDInContext
+	}
+
+	userID, ok := ctx.Value(contextAuthIDKey).(string)
+	if !ok {
+		return "", types.ErrNoUserIDInContext
+	}
+
+	return userID, nil
+}
+
+func PutUserIDIntoContext(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, contextAuthIDKey, id)
 }

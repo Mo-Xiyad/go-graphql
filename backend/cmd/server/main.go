@@ -1,58 +1,31 @@
-// package main
-
-// import (
-// 	"log"
-// 	generated "server/graph"
-
-// 	"github.com/99designs/gqlgen/graphql/handler"
-// 	"github.com/99designs/gqlgen/graphql/playground"
-// 	fiber "github.com/gofiber/fiber/v2"
-// 	"github.com/valyala/fasthttp/fasthttpadaptor"
-// )
-
-// func main() {
-// 	schema := generated.NewExecutableSchema(generated.Config{Resolvers: &generated.Resolver{}})
-// 	graphqlHandler := handler.New(schema)
-
-// 	app := fiber.New()
-
-// 	app.Post("/graphql", func(c *fiber.Ctx) error {
-// 		fasthttpadaptor.NewFastHTTPHandler(graphqlHandler)(c.Context())
-// 		return nil
-// 	})
-
-// 	// Set up GraphQL Playground
-// 	playgroundHandler := playground.Handler("GraphQL Playground", "/graphql")
-// 	app.Get("/playground", func(c *fiber.Ctx) error {
-// 		fasthttpadaptor.NewFastHTTPHandler(playgroundHandler)(c.Context())
-// 		return nil
-// 	})
-// 	app.Get("/playground", func(c *fiber.Ctx) error {
-// 		playground.Handler("GraphQL Playground", "/graphql")
-// 		return nil
-// 	})
-
-//		// Start server
-//		log.Fatal(app.Listen(":4000"))
-//	}
 package main
 
 import (
-	"context"
 	"log"
 	"server"
 	"server/cmd/resolvers"
+	"server/config"
+	"server/domain"
 	generated "server/graph"
 	"server/pkg/db"
+	aut_jwt "server/pkg/jwt"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func graphqlHandler(ctx *server.Context) gin.HandlerFunc {
-	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolvers.Resolver{}}))
+// define types for all services
+type Services struct {
+	AuthService *domain.AuthService
+}
+
+func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
+	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolvers.Resolver{
+		AuthService: services.AuthService,
+	}}))
 
 	return func(c *gin.Context) {
 
@@ -72,23 +45,40 @@ func playgroundHandler() gin.HandlerFunc {
 	}
 }
 
-func GinContextToContextMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := context.WithValue(c.Request.Context(), "ServerContextKey", c)
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
+type Initializer struct {
+	ctx  *server.Context
+	db   *gorm.DB
+	conf *config.Config
+}
+
+func initializer() (*Initializer, error) {
+	conf := config.New()
+
+	ctx, err := server.NewContext(conf)
+	if err != nil {
+		return nil, err
 	}
+
+	database, err := db.InitializeDB(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Initializer{
+		ctx:  ctx,
+		db:   database,
+		conf: conf,
+	}, nil
 }
 
 func main() {
-	ctx, err := server.NewContext()
+	initializer, err := initializer()
+
 	if err != nil {
-		log.Fatalf("failed to initialize context: %v", err)
+		log.Fatalf("failed to initialize server: %v", err)
 	}
 
 	router := gin.Default()
-
-	db.InitializeDB()
 
 	//TODO: Fix CORS middleware
 	config := cors.DefaultConfig()
@@ -96,9 +86,20 @@ func main() {
 	config.AllowHeaders = []string{"Content-Type", "Authorization"}
 	router.Use(cors.New(config))
 
-	router.Use(GinContextToContextMiddleware())
+	router.Use(server.GinContextToContextMiddleware())
 
-	router.POST("/query", graphqlHandler(ctx))
+	// REPOS
+	userRepo := db.NewUserRepo(initializer.db)
+
+	// SERVICES
+	authTokenService := aut_jwt.NewTokenService(initializer.conf)
+	authService := domain.NewAuthService(userRepo, authTokenService)
+
+	router.Use(authMiddleware(authTokenService))
+
+	router.POST("/query", graphqlHandler(initializer.ctx, Services{
+		AuthService: authService,
+	}))
 	router.GET("/", playgroundHandler())
 
 	if err := router.Run(":4000"); err != nil {

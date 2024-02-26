@@ -3,6 +3,7 @@ package db
 import (
 	"log"
 	"os"
+	"server/config"
 	"server/pkg/model"
 
 	"github.com/joho/godotenv"
@@ -10,11 +11,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitializeDB() (*gorm.DB, error) {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("failed to load environment variables: %v", err)
+func InitializeDB(conf *config.Config) (*gorm.DB, error) {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
 	}
-
+	// db, err := gorm.Open(mysql.Open(conf.Database.URL), &gorm.Config{
 	db, err := gorm.Open(mysql.Open(os.Getenv("DSN")), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 	})
