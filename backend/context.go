@@ -16,6 +16,7 @@ type contextKey string
 var (
 	contextAuthIDKey contextKey = "currentUserId"
 	ServerContextKey contextKey = "ServerContextKey"
+	dbContextKey     contextKey = "DB"
 )
 
 // NewContext initializes a new application context.
@@ -26,7 +27,7 @@ func NewContext(db *gorm.DB) (*Context, error) {
 }
 
 func WithDB(ctx context.Context, db *gorm.DB) context.Context {
-	return context.WithValue(ctx, "DB", db)
+	return context.WithValue(ctx, dbContextKey, db)
 }
 
 func GinContextToContextMiddleware() gin.HandlerFunc {
