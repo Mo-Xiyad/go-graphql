@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"server/types"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -55,12 +54,12 @@ func GinContextFromContext(ctx context.Context) (*gin.Context, error) {
 
 func GetUserIDFromContext(ctx context.Context) (string, error) {
 	if ctx.Value(contextAuthIDKey) == nil {
-		return "", types.ErrNoUserIDInContext
+		return "", ErrNoUserIDInContext
 	}
 
 	userID, ok := ctx.Value(contextAuthIDKey).(string)
 	if !ok {
-		return "", types.ErrNoUserIDInContext
+		return "", ErrNoUserIDInContext
 	}
 
 	return userID, nil

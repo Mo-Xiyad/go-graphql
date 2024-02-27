@@ -2,9 +2,9 @@ package services
 
 import (
 	"context"
+	"server"
 	user "server/cmd/services/user"
 	gql_model "server/graph/model"
-	"server/types"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,12 +28,12 @@ func (as *AuthService) Login(ctx context.Context, input gql_model.LoginInput) (*
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		return nil, types.ErrBadCredentials
+		return nil, server.ErrBadCredentials
 	}
 
 	token, err := as.AuthTokenService.CreateAccessToken(ctx, user)
 	if err != nil {
-		return nil, types.ErrGenAccessToken
+		return nil, server.ErrGenAccessToken
 	}
 
 	return &gql_model.AuthPayload{

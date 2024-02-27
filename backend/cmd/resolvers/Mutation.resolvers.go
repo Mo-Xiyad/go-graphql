@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"server"
 	"server/graph"
 	gql_model "server/graph/model"
 	"server/pkg/model"
-	"server/types"
 )
 
 func mapAuthResponse(a gql_model.AuthPayload) *gql_model.AuthPayload {
@@ -21,7 +21,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gql_model.NewUs
 	res, err := r.UserService.CreateUser(ctx, input)
 	if err != nil {
 		switch {
-		case errors.Is(err, types.ErrValidation):
+		case errors.Is(err, server.ErrValidation):
 			return nil, buildBadRequestError(ctx, err)
 		default:
 			return nil, err
@@ -43,8 +43,8 @@ func (r *mutationResolver) Login(ctx context.Context, input gql_model.LoginInput
 	})
 	if err != nil {
 		switch {
-		case errors.Is(err, types.ErrValidation) ||
-			errors.Is(err, types.ErrBadCredentials):
+		case errors.Is(err, server.ErrValidation) ||
+			errors.Is(err, server.ErrBadCredentials):
 			return nil, buildBadRequestError(ctx, err)
 		default:
 			return nil, err

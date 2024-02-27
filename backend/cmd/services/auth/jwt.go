@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"server"
 	"server/config"
 	"server/pkg/model"
-	"server/types"
 	"strings"
 	"time"
 
@@ -52,12 +52,12 @@ func buildToken(token *jwtGo.Token) AuthToken {
 func (ts *TokenService) ParseTokenFromRequest(ctx context.Context, r *http.Request) (AuthToken, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, server.ErrInvalidAccessToken
 	}
 
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-		return AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, server.ErrInvalidAccessToken
 	}
 
 	tokenString := tokenParts[1]
@@ -69,7 +69,7 @@ func (ts *TokenService) ParseTokenFromRequest(ctx context.Context, r *http.Reque
 	})
 	if err != nil {
 		log.Printf("error: %v", err)
-		return AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, server.ErrInvalidAccessToken
 	}
 
 	return buildToken(token), nil
@@ -81,7 +81,7 @@ func (ts *TokenService) ParseToken(ctx context.Context, payload string) (AuthTok
 		return secret, nil
 	})
 	if err != nil {
-		return AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, server.ErrInvalidAccessToken
 	}
 
 	return buildToken(token), nil
