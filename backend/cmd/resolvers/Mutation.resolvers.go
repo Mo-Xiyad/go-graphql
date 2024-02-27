@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"server/cmd/api"
 	"server/graph"
 	gql_model "server/graph/model"
 	"server/pkg/model"
@@ -19,9 +17,17 @@ func mapAuthResponse(a gql_model.AuthPayload) *gql_model.AuthPayload {
 	}
 }
 
-// CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input gql_model.NewUser) (*model.User, error) {
-	return api.CreateUser(ctx, input)
+	res, err := r.UserService.CreateUser(ctx, input)
+	if err != nil {
+		switch {
+		case errors.Is(err, types.ErrValidation):
+			return nil, buildBadRequestError(ctx, err)
+		default:
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 // CreateCompany is the resolver for the createCompany field.
@@ -35,8 +41,6 @@ func (r *mutationResolver) Login(ctx context.Context, input gql_model.LoginInput
 		Email:    input.Email,
 		Password: input.Password,
 	})
-	log.Println("res", res)
-	log.Println("err", err)
 	if err != nil {
 		switch {
 		case errors.Is(err, types.ErrValidation) ||
@@ -46,7 +50,6 @@ func (r *mutationResolver) Login(ctx context.Context, input gql_model.LoginInput
 			return nil, err
 		}
 	}
-	log.Println("res", res)
 	return mapAuthResponse(*res), nil
 }
 

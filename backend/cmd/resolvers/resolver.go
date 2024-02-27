@@ -15,6 +15,7 @@ import (
 
 type Resolver struct {
 	AuthService *domain.AuthService
+	UserService *domain.UserService
 }
 
 func buildBadRequestError(ctx context.Context, err error) error {
@@ -26,3 +27,48 @@ func buildBadRequestError(ctx context.Context, err error) error {
 		},
 	}
 }
+
+func buildUnauthenticatedError(ctx context.Context, err error) error {
+	return &gqlerror.Error{
+		Message: err.Error(),
+		Path:    graphql.GetPath(ctx),
+		Extensions: map[string]interface{}{
+			"code": http.StatusUnauthorized,
+		},
+	}
+}
+
+func buildForbiddenError(ctx context.Context, err error) error {
+	return &gqlerror.Error{
+		Message: err.Error(),
+		Path:    graphql.GetPath(ctx),
+		Extensions: map[string]interface{}{
+			"code": http.StatusForbidden,
+		},
+	}
+}
+
+func buildNotFoundError(ctx context.Context, err error) error {
+	return &gqlerror.Error{
+		Message: err.Error(),
+		Path:    graphql.GetPath(ctx),
+		Extensions: map[string]interface{}{
+			"code": http.StatusForbidden,
+		},
+	}
+}
+
+// func buildError(ctx context.Context, err error) error {
+// 	switch {
+// 	case errors.Is(err, twitter.ErrForbidden):
+// 		return buildForbiddenError(ctx, err)
+// 	case errors.Is(err, twitter.ErrUnauthenticated):
+// 		return buildUnauthenticatedError(ctx, err)
+// 	case errors.Is(err, twitter.ErrValidation):
+// 		return buildBadRequestError(ctx, err)
+// 	case errors.Is(err, twitter.ErrNotFound):
+// 		return buildNotFoundError(ctx, err)
+// 	default:
+// 		return err
+// 	}
+// }

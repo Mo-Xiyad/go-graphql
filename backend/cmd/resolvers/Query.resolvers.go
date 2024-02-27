@@ -7,19 +7,18 @@ package resolvers
 import (
 	"context"
 	"fmt"
-	"server/cmd/api"
 	"server/graph"
 	"server/pkg/model"
 )
 
 // GetAllUsers is the resolver for the GetAllUsers field.
 func (r *queryResolver) GetAllUsers(ctx context.Context) ([]*model.User, error) {
-	return api.GetAllUsers(ctx)
+	return r.UserService.GetAllUsers(ctx)
 }
 
 // GetUser is the resolver for the GetUser field.
 func (r *queryResolver) GetUser(ctx context.Context, id string) (*model.User, error) {
-	return api.GetUser(ctx, id)
+	return r.UserService.GetUserByID(ctx, id)
 }
 
 // GetAllCompanies is the resolver for the GetAllCompanies field.
