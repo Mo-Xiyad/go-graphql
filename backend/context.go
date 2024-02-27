@@ -3,8 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"server/config"
-	"server/pkg/db"
 	"server/types"
 
 	"github.com/gin-gonic/gin"
@@ -22,11 +20,7 @@ var (
 )
 
 // NewContext initializes a new application context.
-func NewContext(conf *config.Config) (*Context, error) {
-	db, err := db.InitializeDB(conf)
-	if err != nil {
-		return nil, err
-	}
+func NewContext(db *gorm.DB) (*Context, error) {
 	return &Context{
 		DB: db,
 	}, nil

@@ -20,11 +20,13 @@ import (
 // define types for all services
 type Services struct {
 	AuthService *domain.AuthService
+	UserService *domain.UserService
 }
 
 func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
 	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolvers.Resolver{
 		AuthService: services.AuthService,
+		UserService: services.UserService,
 	}}))
 
 	return func(c *gin.Context) {
@@ -54,12 +56,12 @@ type Initializer struct {
 func initializer() (*Initializer, error) {
 	conf := config.New()
 
-	ctx, err := server.NewContext(conf)
+	database, err := db.InitializeDB(conf)
 	if err != nil {
 		return nil, err
 	}
 
-	database, err := db.InitializeDB(conf)
+	ctx, err := server.NewContext(database)
 	if err != nil {
 		return nil, err
 	}
@@ -88,17 +90,19 @@ func main() {
 
 	router.Use(server.GinContextToContextMiddleware())
 
-	// REPOS
+	// Repository layer to communicate with the database
 	userRepo := db.NewUserRepo(initializer.db)
 
-	// SERVICES
+	// Service layer to handle business logic
 	authTokenService := aut_jwt.NewTokenService(initializer.conf)
 	authService := domain.NewAuthService(userRepo, authTokenService)
+	userService := domain.NewUserService(userRepo)
 
 	router.Use(authMiddleware(authTokenService))
 
 	router.POST("/query", graphqlHandler(initializer.ctx, Services{
 		AuthService: authService,
+		UserService: userService,
 	}))
 	router.GET("/", playgroundHandler())
 
