@@ -2,7 +2,7 @@ package main
 
 import (
 	"server"
-	"server/types"
+	services "server/cmd/services/auth"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,7 +25,7 @@ import (
 //			c.Next()
 //		}
 //	}
-func authMiddleware(authTokenService types.AuthTokenService) gin.HandlerFunc {
+func authMiddleware(authTokenService services.IAuthTokenService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 

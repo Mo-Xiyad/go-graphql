@@ -4,12 +4,11 @@ import (
 	"log"
 	"server"
 	"server/cmd/resolvers"
+	auth "server/cmd/services/auth"
+	user "server/cmd/services/user"
 	"server/config"
-	"server/domain"
 	generated "server/graph"
 	"server/pkg/db"
-	aut_jwt "server/pkg/jwt"
-	"server/types"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -20,8 +19,8 @@ import (
 
 // define types for all services
 type Services struct {
-	AuthService types.AuthService
-	UserService types.IUserService
+	AuthService auth.IAuthService
+	UserService user.IUserService
 }
 
 func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
@@ -92,12 +91,12 @@ func main() {
 	router.Use(server.GinContextToContextMiddleware())
 
 	// Repository layer to communicate with the database
-	userRepo := db.NewUserRepo(initializer.db)
+	userRepo := user.NewUserRepo(initializer.db)
 
 	// Service layer to handle business logic
-	authTokenService := aut_jwt.NewTokenService(initializer.conf)
-	authService := domain.NewAuthService(userRepo, authTokenService)
-	userService := domain.NewUserService(userRepo)
+	authTokenService := auth.NewTokenService(initializer.conf)
+	authService := auth.NewAuthService(userRepo, authTokenService)
+	userService := user.NewUserService(userRepo)
 
 	router.Use(authMiddleware(authTokenService))
 

@@ -1,20 +1,19 @@
-package domain
+package services
 
 import (
 	"context"
 	gql_model "server/graph/model"
 	"server/pkg/model"
-	"server/types"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
-	UserRepo types.UserRepo
+	UserRepo IUserRepo
 }
 
-func NewUserService(ur types.UserRepo) *UserService {
+func NewUserService(ur IUserRepo) *UserService {
 	return &UserService{
 		UserRepo: ur,
 	}

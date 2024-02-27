@@ -1,4 +1,4 @@
-package jwt
+package services
 
 import (
 	"context"
@@ -29,35 +29,35 @@ func NewTokenService(conf *config.Config) *TokenService {
 	}
 }
 
-func buildToken(token *jwtGo.Token) types.AuthToken {
+func buildToken(token *jwtGo.Token) AuthToken {
 	claims, ok := token.Claims.(jwtGo.MapClaims)
 	log.Printf("claims: %v", claims)
 	if !ok {
-		return types.AuthToken{}
+		return AuthToken{}
 	}
 
 	if id, ok := claims["jti"].(string); ok {
-		return types.AuthToken{
+		return AuthToken{
 			ID:  id,
 			Sub: fmt.Sprintf("%v", claims["sub"]),
 		}
 	} else {
-		return types.AuthToken{
+		return AuthToken{
 			ID:  "",
 			Sub: fmt.Sprintf("%v", claims["sub"]),
 		}
 	}
 }
 
-func (ts *TokenService) ParseTokenFromRequest(ctx context.Context, r *http.Request) (types.AuthToken, error) {
+func (ts *TokenService) ParseTokenFromRequest(ctx context.Context, r *http.Request) (AuthToken, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return types.AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, types.ErrInvalidAccessToken
 	}
 
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-		return types.AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, types.ErrInvalidAccessToken
 	}
 
 	tokenString := tokenParts[1]
@@ -69,19 +69,19 @@ func (ts *TokenService) ParseTokenFromRequest(ctx context.Context, r *http.Reque
 	})
 	if err != nil {
 		log.Printf("error: %v", err)
-		return types.AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, types.ErrInvalidAccessToken
 	}
 
 	return buildToken(token), nil
 }
 
-func (ts *TokenService) ParseToken(ctx context.Context, payload string) (types.AuthToken, error) {
+func (ts *TokenService) ParseToken(ctx context.Context, payload string) (AuthToken, error) {
 	secret := []byte(ts.Conf.JWT.Secret)
 	token, err := jwtGo.ParseWithClaims(payload, jwtGo.MapClaims{}, func(token *jwtGo.Token) (interface{}, error) {
 		return secret, nil
 	})
 	if err != nil {
-		return types.AuthToken{}, types.ErrInvalidAccessToken
+		return AuthToken{}, types.ErrInvalidAccessToken
 	}
 
 	return buildToken(token), nil
@@ -90,7 +90,7 @@ func (ts *TokenService) ParseToken(ctx context.Context, payload string) (types.A
 func (ts *TokenService) CreateRefreshToken(ctx context.Context, user *model.User, tokenID string) (string, error) {
 	claims := jwtGo.MapClaims{
 		"sub": user.ID,
-		"exp": time.Now().Add(types.RefreshTokenLifetime).Unix(),
+		"exp": time.Now().Add(RefreshTokenLifetime).Unix(),
 		"iat": time.Now().Unix(),
 		"jti": tokenID,
 	}
@@ -107,7 +107,7 @@ func (ts *TokenService) CreateRefreshToken(ctx context.Context, user *model.User
 func (ts *TokenService) CreateAccessToken(ctx context.Context, user *model.User) (string, error) {
 	claims := jwtGo.MapClaims{
 		"sub": user.ID,
-		"exp": time.Now().Add(types.AccessTokenLifetime).Unix(),
+		"exp": time.Now().Add(AccessTokenLifetime).Unix(),
 		"iat": time.Now().Unix(),
 		"jti": uuid.New().String(),
 	}

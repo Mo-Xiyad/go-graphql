@@ -1,7 +1,8 @@
-package domain
+package services
 
 import (
 	"context"
+	user "server/cmd/services/user"
 	gql_model "server/graph/model"
 	"server/types"
 
@@ -9,11 +10,11 @@ import (
 )
 
 type AuthService struct {
-	AuthTokenService types.AuthTokenService
-	UserRepo         types.UserRepo
+	AuthTokenService IAuthTokenService
+	UserRepo         user.IUserRepo
 }
 
-func NewAuthService(ur types.UserRepo, ats types.AuthTokenService) *AuthService {
+func NewAuthService(ur user.IUserRepo, ats IAuthTokenService) *AuthService {
 	return &AuthService{
 		AuthTokenService: ats,
 		UserRepo:         ur,

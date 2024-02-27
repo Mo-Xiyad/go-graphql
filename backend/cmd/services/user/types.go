@@ -1,4 +1,4 @@
-package types
+package services
 
 import (
 	"context"
@@ -13,7 +13,7 @@ type IUserService interface {
 	GetAllUsers(ctx context.Context) ([]*model.User, error)
 }
 
-type UserRepo interface {
+type IUserRepo interface {
 	Create(ctx context.Context, user model.User) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByID(ctx context.Context, id string) (*model.User, error)
