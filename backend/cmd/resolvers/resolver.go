@@ -3,7 +3,7 @@ package resolvers
 import (
 	"context"
 	"net/http"
-	"server/domain"
+	"server/types"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -14,8 +14,8 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	AuthService *domain.AuthService
-	UserService *domain.UserService
+	AuthService types.AuthService
+	UserService types.IUserService
 }
 
 func buildBadRequestError(ctx context.Context, err error) error {

@@ -9,6 +9,7 @@ import (
 	generated "server/graph"
 	"server/pkg/db"
 	aut_jwt "server/pkg/jwt"
+	"server/types"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -19,8 +20,8 @@ import (
 
 // define types for all services
 type Services struct {
-	AuthService *domain.AuthService
-	UserService *domain.UserService
+	AuthService types.AuthService
+	UserService types.IUserService
 }
 
 func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {

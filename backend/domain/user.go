@@ -50,3 +50,11 @@ func (us *UserService) GetUserByID(ctx context.Context, id string) (*model.User,
 	}
 	return user, nil
 }
+
+func (us *UserService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	user, err := us.UserRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}

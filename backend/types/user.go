@@ -6,7 +6,7 @@ import (
 	"server/pkg/model"
 )
 
-type UserService interface {
+type IUserService interface {
 	CreateUser(ctx context.Context, user gql_model.NewUser) (*model.User, error)
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
