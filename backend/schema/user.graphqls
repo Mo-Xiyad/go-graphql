@@ -18,7 +18,3 @@ type AuthPayload {
   token: String
   user: User
 }
-# type AuthResponse {
-#   accessToken: String!
-#   user: User!
-# }
