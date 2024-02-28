@@ -63,7 +63,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		CreateCompany func(childComplexity int, input gql_model.CreateCompanyInput) int
-		CreateUser    func(childComplexity int, input gql_model.NewUser) int
+		CreateUser    func(childComplexity int, input gql_model.CreateUserInput) int
 		Login         func(childComplexity int, input gql_model.LoginInput) int
 	}
 
@@ -90,7 +90,7 @@ type CompanyResolver interface {
 	Email(ctx context.Context, obj *model.Company) (string, error)
 }
 type MutationResolver interface {
-	CreateUser(ctx context.Context, input gql_model.NewUser) (*model.User, error)
+	CreateUser(ctx context.Context, input gql_model.CreateUserInput) (*model.User, error)
 	CreateCompany(ctx context.Context, input gql_model.CreateCompanyInput) (*model.Company, error)
 	Login(ctx context.Context, input gql_model.LoginInput) (*gql_model.AuthPayload, error)
 }
@@ -180,7 +180,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateUser(childComplexity, args["input"].(gql_model.NewUser)), true
+		return e.complexity.Mutation.CreateUser(childComplexity, args["input"].(gql_model.CreateUserInput)), true
 
 	case "Mutation.login":
 		if e.complexity.Mutation.Login == nil {
@@ -262,8 +262,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateCompanyInput,
+		ec.unmarshalInputCreateUserInput,
 		ec.unmarshalInputLoginInput,
-		ec.unmarshalInputNewUser,
 	)
 	first := true
 
@@ -362,7 +362,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "../schema/Mutation.graphqls", Input: `type Mutation {
-  createUser(input: NewUser!): User!
+  createUser(input: CreateUserInput!): User!
   createCompany(input: CreateCompanyInput!): Company!
   login(input: LoginInput!): AuthPayload!
 }
@@ -390,7 +390,7 @@ input CreateCompanyInput {
   name: String!
   email: String!
 }
-input NewUser {
+input CreateUserInput {
   name: String!
   email: String!
   password: String!
@@ -435,10 +435,10 @@ func (ec *executionContext) field_Mutation_createCompany_args(ctx context.Contex
 func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 gql_model.NewUser
+	var arg0 gql_model.CreateUserInput
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNNewUser2serverᚋgraphᚋmodelᚐNewUser(ctx, tmp)
+		arg0, err = ec.unmarshalNCreateUserInput2serverᚋgraphᚋmodelᚐCreateUserInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -781,7 +781,7 @@ func (ec *executionContext) _Mutation_createUser(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateUser(rctx, fc.Args["input"].(gql_model.NewUser))
+		return ec.resolvers.Mutation().CreateUser(rctx, fc.Args["input"].(gql_model.CreateUserInput))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3252,20 +3252,27 @@ func (ec *executionContext) unmarshalInputCreateCompanyInput(ctx context.Context
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj interface{}) (gql_model.LoginInput, error) {
-	var it gql_model.LoginInput
+func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, obj interface{}) (gql_model.CreateUserInput, error) {
+	var it gql_model.CreateUserInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"email", "password"}
+	fieldsInOrder := [...]string{"name", "email", "password"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
 		case "email":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -3286,27 +3293,20 @@ func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj in
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputNewUser(ctx context.Context, obj interface{}) (gql_model.NewUser, error) {
-	var it gql_model.NewUser
+func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj interface{}) (gql_model.LoginInput, error) {
+	var it gql_model.LoginInput
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email", "password"}
+	fieldsInOrder := [...]string{"email", "password"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
 		case "email":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -4214,6 +4214,11 @@ func (ec *executionContext) unmarshalNCreateCompanyInput2serverᚋgraphᚋmodel�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateUserInput2serverᚋgraphᚋmodelᚐCreateUserInput(ctx context.Context, v interface{}) (gql_model.CreateUserInput, error) {
+	res, err := ec.unmarshalInputCreateUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -4231,11 +4236,6 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 
 func (ec *executionContext) unmarshalNLoginInput2serverᚋgraphᚋmodelᚐLoginInput(ctx context.Context, v interface{}) (gql_model.LoginInput, error) {
 	res, err := ec.unmarshalInputLoginInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNNewUser2serverᚋgraphᚋmodelᚐNewUser(ctx context.Context, v interface{}) (gql_model.NewUser, error) {
-	res, err := ec.unmarshalInputNewUser(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

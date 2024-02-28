@@ -1,5 +1,5 @@
 type Mutation {
-  createUser(input: NewUser!): User!
+  createUser(input: CreateUserInput!): User!
   createCompany(input: CreateCompanyInput!): Company!
   login(input: LoginInput!): AuthPayload!
 }

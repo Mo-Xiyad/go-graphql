@@ -12,14 +12,6 @@ import (
 	"server/pkg/model"
 )
 
-func mapUser(u model.User) *model.User {
-	return &model.User{
-		ID:    u.ID,
-		Email: u.Email,
-		Name:  u.Name,
-	}
-}
-
 // User is the resolver for the user field.
 func (r *authPayloadResolver) User(ctx context.Context, obj *gql_model.AuthPayload) (*model.User, error) {
 	return obj.User, nil

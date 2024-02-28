@@ -7,7 +7,7 @@ import (
 )
 
 type IUserService interface {
-	CreateUser(ctx context.Context, user gql_model.NewUser) (*model.User, error)
+	CreateUser(ctx context.Context, user gql_model.CreateUserInput) (*model.User, error)
 	GetUserByID(ctx context.Context, id string) (*model.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
 	GetAllUsers(ctx context.Context) ([]*model.User, error)

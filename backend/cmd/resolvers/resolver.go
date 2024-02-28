@@ -2,9 +2,13 @@ package resolvers
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"server"
 	auth "server/cmd/services/auth"
 	user "server/cmd/services/user"
+	gql_model "server/graph/model"
+	"server/pkg/model"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/vektah/gqlparser/v2/gqlerror"
@@ -59,17 +63,30 @@ func buildNotFoundError(ctx context.Context, err error) error {
 	}
 }
 
-// func buildError(ctx context.Context, err error) error {
-// 	switch {
-// 	case errors.Is(err, twitter.ErrForbidden):
-// 		return buildForbiddenError(ctx, err)
-// 	case errors.Is(err, twitter.ErrUnauthenticated):
-// 		return buildUnauthenticatedError(ctx, err)
-// 	case errors.Is(err, twitter.ErrValidation):
-// 		return buildBadRequestError(ctx, err)
-// 	case errors.Is(err, twitter.ErrNotFound):
-// 		return buildNotFoundError(ctx, err)
-// 	default:
-// 		return err
-// 	}
-// }
+func buildError(ctx context.Context, err error) error {
+	switch {
+	case errors.Is(err, server.ErrForbidden):
+		return buildForbiddenError(ctx, err)
+	case errors.Is(err, server.ErrUnauthenticated):
+		return buildUnauthenticatedError(ctx, err)
+	case errors.Is(err, server.ErrValidation):
+		return buildBadRequestError(ctx, err)
+	case errors.Is(err, server.ErrNotFound):
+		return buildNotFoundError(ctx, err)
+	default:
+		return err
+	}
+}
+func mapUser(u model.User) *model.User {
+	return &model.User{
+		ID:    u.ID,
+		Email: u.Email,
+		Name:  u.Name,
+	}
+}
+func mapAuthResponse(a gql_model.AuthPayload) *gql_model.AuthPayload {
+	return &gql_model.AuthPayload{
+		Token: a.Token,
+		User:  mapUser(*a.User),
+	}
+}

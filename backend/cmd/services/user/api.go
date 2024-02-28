@@ -2,6 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"server"
 	gql_model "server/graph/model"
 	"server/pkg/model"
 
@@ -19,18 +22,24 @@ func NewUserService(ur IUserRepo) *UserService {
 	}
 }
 
-func (us *UserService) CreateUser(ctx context.Context, input gql_model.NewUser) (*model.User, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+func (us *UserService) CreateUser(ctx context.Context, input gql_model.CreateUserInput) (*model.User, error) {
+
+	if _, err := us.UserRepo.GetByEmail(ctx, input.Email); !errors.Is(err, server.ErrNotFound) {
+		return nil, fmt.Errorf("email %s is already taken", input.Email)
+	}
+
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error hashing password: %v", err)
 	}
 
 	user := model.User{
 		ID:       uint64(uuid.New().ID()),
 		Name:     input.Name,
 		Email:    input.Email,
-		Password: string(hashedPassword),
+		Password: string(hashPassword),
 	}
+	// create the user
 	return us.UserRepo.Create(ctx, user)
 }
 
