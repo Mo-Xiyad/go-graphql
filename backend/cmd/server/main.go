@@ -24,10 +24,12 @@ type Services struct {
 }
 
 func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
-	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &resolvers.Resolver{
-		AuthService: services.AuthService,
-		UserService: services.UserService,
-	}}))
+	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
+		Resolvers: &resolvers.Resolver{
+			AuthService: services.AuthService,
+			UserService: services.UserService,
+		},
+	}))
 
 	return func(c *gin.Context) {
 
@@ -35,7 +37,6 @@ func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctxWithDB)
 
 		h.ServeHTTP(c.Writer, c.Request)
-
 	}
 }
 
@@ -98,7 +99,10 @@ func main() {
 	authService := auth.NewAuthService(userRepo, authTokenService)
 	userService := user.NewUserService(userRepo)
 
-	router.Use(authMiddleware(authTokenService))
+	allowedOperations := map[string]bool{
+		"Login": true,
+	}
+	router.Use(authMiddleware(authTokenService, allowedOperations))
 
 	router.POST("/query", graphqlHandler(initializer.ctx, Services{
 		AuthService: authService,

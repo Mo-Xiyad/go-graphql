@@ -1,43 +1,60 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"server"
 	services "server/cmd/services/auth"
 
 	"github.com/gin-gonic/gin"
 )
 
-// func authMiddleware(authTokenService types.AuthTokenService) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		ctx := c.Request.Context()
-
-// 		log.Printf("token: %v", c.Request)
-// 		token, err := authTokenService.ParseTokenFromRequest(ctx, c.Request)
-// 		log.Printf("token: %v", token)
-// 		if err != nil {
-// 			c.Next()
-// 			return
-// 		}
-
-// 		ctx = server.PutUserIDIntoContext(ctx, token.Sub)
-// 		c.Request = c.Request.WithContext(ctx)
-
-//			c.Next()
-//		}
-//	}
-func authMiddleware(authTokenService services.IAuthTokenService) gin.HandlerFunc {
+func authMiddleware(authTokenService services.IAuthTokenService, allowedList map[string]bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		token, err := authTokenService.ParseTokenFromRequest(ctx, c.Request)
-		if err != nil {
+		operationName := getOperationName(c)
+		if allowedList[operationName] {
 			c.Next()
 			return
 		}
+		token, err := authTokenService.ParseTokenFromRequest(ctx, c.Request)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
 
-		// Log the parsed token
 		ctx = server.PutUserIDIntoContext(ctx, token.Sub)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
+}
+func getOperationName(c *gin.Context) string {
+	var requestBody map[string]interface{}
+
+	if c.Request.ContentLength == 0 {
+		return ""
+	}
+
+	body, err := c.GetRawData()
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		return ""
+	}
+
+	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+	if err := json.Unmarshal(body, &requestBody); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		return ""
+	}
+
+	if operationName, ok := requestBody["operationName"].(string); ok {
+		return operationName
+	}
+
+	return ""
 }
