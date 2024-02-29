@@ -6,6 +6,8 @@ import (
 	gql_model "server/graph/model"
 	"server/pkg/model"
 	"time"
+
+	jwtGo "github.com/golang-jwt/jwt/v5"
 )
 
 type IAuthService interface {
@@ -18,12 +20,13 @@ type IAuthTokenService interface {
 	CreateAccessToken(ctx context.Context, user *model.User) (string, error)
 	// CreateRefreshToken(ctx context.Context, user User, tokenID string) (string, error)
 	// ParseToken(ctx context.Context, payload string) (AuthToken, error)
-	ParseTokenFromRequest(ctx context.Context, r *http.Request) (AuthToken, error)
+	ParseTokenFromRequest(ctx context.Context, r *http.Request) (*CustomClaims, error)
+	// ValidateToken(ctx context.Context, token string) (bool, error)
 }
 
-type AuthToken struct {
-	ID  string
-	Sub string
+type CustomClaims struct {
+	jwtGo.RegisteredClaims
+	UserID string `json:"userId"`
 }
 
 var (
