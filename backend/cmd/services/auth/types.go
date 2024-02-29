@@ -26,7 +26,7 @@ type IAuthTokenService interface {
 
 type CustomClaims struct {
 	jwtGo.RegisteredClaims
-	UserID string `json:"userId"`
+	UserID uint64
 }
 
 var (

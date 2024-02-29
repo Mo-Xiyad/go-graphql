@@ -91,9 +91,14 @@ func main() {
 
 	//TODO: Fix CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
+	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:8080"}
 	config.AllowHeaders = []string{"Content-Type", "Authorization"}
+	config.AllowOriginFunc = func(origin string) bool { return true }
+	config.AllowCredentials = true
+	config.MaxAge = 86400
+
 	router.Use(cors.New(config))
+	router.Use(Middleware())
 
 	router.Use(server.GinContextToContextMiddleware())
 

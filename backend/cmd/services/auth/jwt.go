@@ -60,7 +60,7 @@ func (ts *TokenService) CreateRefreshToken(ctx context.Context, user *model.User
 			IssuedAt:  jwtGo.NewNumericDate(time.Now()),
 			ID:        tokenID,
 		},
-		UserID: fmt.Sprint(user.ID),
+		UserID: user.ID,
 	}
 
 	token := jwtGo.NewWithClaims(jwtGo.SigningMethodHS256, claims)
@@ -80,7 +80,7 @@ func (ts *TokenService) CreateAccessToken(ctx context.Context, user *model.User)
 			IssuedAt:  jwtGo.NewNumericDate(time.Now()),
 			ID:        uuid.New().String(),
 		},
-		UserID: fmt.Sprint(user.ID),
+		UserID: user.ID,
 	}
 
 	// Create the token
