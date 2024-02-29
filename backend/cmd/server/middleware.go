@@ -15,19 +15,23 @@ import (
 func authMiddleware(authTokenService services.IAuthTokenService, allowedList map[string]bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
+		ctx = server.PutAuth(ctx, false)
 
 		operationName := getOperationName(c)
 		if allowedList[operationName] {
 			c.Next()
 			return
 		}
+
 		token, err := authTokenService.ParseTokenFromRequest(ctx, c.Request)
+
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		ctx = server.PutUserIDIntoContext(ctx, token.Sub)
+		ctx = server.PutAuth(ctx, true)
+		ctx = server.PutUserIDIntoContext(ctx, token.UserID)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
