@@ -15,7 +15,7 @@ import (
 func authMiddleware(authTokenService services.IAuthTokenService, allowedList map[string]bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		ctx = server.PutAuth(ctx, false)
+		ctx = server.SetIsLoggedIn(ctx, false)
 
 		operationName := getOperationName(c)
 		if allowedList[operationName] {
@@ -30,7 +30,7 @@ func authMiddleware(authTokenService services.IAuthTokenService, allowedList map
 			return
 		}
 
-		ctx = server.PutAuth(ctx, true)
+		ctx = server.SetIsLoggedIn(ctx, true)
 		ctx = server.PutUserIDIntoContext(ctx, token.UserID)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()

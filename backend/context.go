@@ -17,7 +17,7 @@ var (
 	CurrentAuthUserId contextKey = "currentUserId"
 	ServerContextKey  contextKey = "ServerContextKey"
 	dbContextKey      contextKey = "DB"
-	isAuthenticated   contextKey = "isAuthenticated"
+	IsLoggedIn        contextKey = "isLoggedIn"
 )
 
 // NewContext initializes a new application context.
@@ -71,16 +71,16 @@ func PutUserIDIntoContext(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, CurrentAuthUserId, id)
 }
 
-func PutAuth(ctx context.Context, isAuth bool) context.Context {
-	return context.WithValue(context.Background(), isAuthenticated, isAuth)
+func SetIsLoggedIn(ctx context.Context, isAuth bool) context.Context {
+	return context.WithValue(context.Background(), IsLoggedIn, isAuth)
 }
 
-func GetAuth(ctx context.Context) bool {
-	if ctx.Value(isAuthenticated) == nil {
+func CheckIsLoggedIn(ctx context.Context) bool {
+	if ctx.Value(IsLoggedIn) == nil {
 		return false
 	}
 
-	auth, ok := ctx.Value(isAuthenticated).(bool)
+	auth, ok := ctx.Value(IsLoggedIn).(bool)
 	if !ok {
 		return false
 	}
