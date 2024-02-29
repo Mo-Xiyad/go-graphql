@@ -14,9 +14,10 @@ type Context struct {
 type contextKey string
 
 var (
-	contextAuthIDKey contextKey = "currentUserId"
-	ServerContextKey contextKey = "ServerContextKey"
-	dbContextKey     contextKey = "DB"
+	CurrentAuthUserId contextKey = "currentUserId"
+	ServerContextKey  contextKey = "ServerContextKey"
+	dbContextKey      contextKey = "DB"
+	isAuthenticated   contextKey = "isAuthenticated"
 )
 
 // NewContext initializes a new application context.
@@ -54,11 +55,11 @@ func GinContextFromContext(ctx context.Context) (*gin.Context, error) {
 }
 
 func GetUserIDFromContext(ctx context.Context) (string, error) {
-	if ctx.Value(contextAuthIDKey) == nil {
+	if ctx.Value(CurrentAuthUserId) == nil {
 		return "", ErrNoUserIDInContext
 	}
 
-	userID, ok := ctx.Value(contextAuthIDKey).(string)
+	userID, ok := ctx.Value(CurrentAuthUserId).(string)
 	if !ok {
 		return "", ErrNoUserIDInContext
 	}
@@ -67,5 +68,22 @@ func GetUserIDFromContext(ctx context.Context) (string, error) {
 }
 
 func PutUserIDIntoContext(ctx context.Context, id string) context.Context {
-	return context.WithValue(ctx, contextAuthIDKey, id)
+	return context.WithValue(ctx, CurrentAuthUserId, id)
+}
+
+func PutAuth(ctx context.Context, isAuth bool) context.Context {
+	return context.WithValue(context.Background(), isAuthenticated, isAuth)
+}
+
+func GetAuth(ctx context.Context) bool {
+	if ctx.Value(isAuthenticated) == nil {
+		return false
+	}
+
+	auth, ok := ctx.Value(isAuthenticated).(bool)
+	if !ok {
+		return false
+	}
+
+	return auth
 }
