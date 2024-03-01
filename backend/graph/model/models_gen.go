@@ -7,8 +7,9 @@ import (
 )
 
 type AuthPayload struct {
-	Token *string     `json:"token,omitempty"`
-	User  *model.User `json:"user,omitempty"`
+	AccessToken  *string     `json:"accessToken,omitempty"`
+	RefreshToken *string     `json:"refreshToken,omitempty"`
+	User         *model.User `json:"user,omitempty"`
 }
 
 type CreateCompanyInput struct {
