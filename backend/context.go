@@ -2,9 +2,7 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -16,11 +14,9 @@ type Context struct {
 type contextKey string
 
 var (
-	CurrentAuthUserId    contextKey = "currentUserId"
-	ServerContextKey     contextKey = "ServerContextKey"
-	dbContextKey         contextKey = "DB"
-	IsLoggedIn           contextKey = "isLoggedIn"
-	CookieAccessTokenKey contextKey = "cookieAccessToken"
+	CurrentAuthUserId contextKey = "currentUserId"
+	ServerContextKey  contextKey = "ServerContextKey"
+	dbContextKey      contextKey = "DB"
 )
 
 // NewContext initializes a new application context.
@@ -72,45 +68,4 @@ func GetUserIDFromContext(ctx context.Context) (string, error) {
 
 func PutUserIDIntoContext(ctx context.Context, id uint64) context.Context {
 	return context.WithValue(ctx, CurrentAuthUserId, id)
-}
-
-func SetIsLoggedIn(ctx context.Context, isAuth bool) context.Context {
-	return context.WithValue(context.Background(), IsLoggedIn, isAuth)
-}
-
-func CheckIsLoggedIn(ctx context.Context) bool {
-	if ctx.Value(IsLoggedIn) == nil {
-		return false
-	}
-
-	auth, ok := ctx.Value(IsLoggedIn).(bool)
-	if !ok {
-		return false
-	}
-
-	return auth
-}
-
-type CookieAccess struct {
-	Writer     http.ResponseWriter
-	IsLoggedIn bool
-	UserId     uint64
-}
-
-func SetCookyInCtx(ctx *gin.Context, val *CookieAccess) {
-	newCtx := context.WithValue(ctx.Request.Context(), CookieAccessTokenKey, val)
-	ctx.Request = ctx.Request.WithContext(newCtx)
-}
-
-func GetCookieAccessFromCtx(ctx context.Context) (*CookieAccess, error) {
-	if ctx.Value(CookieAccessTokenKey) == nil {
-		return nil, errors.New("no cookie access in context")
-	}
-
-	ca, ok := ctx.Value(CookieAccessTokenKey).(*CookieAccess)
-	if !ok {
-		return nil, errors.New("no cookie access in context")
-	}
-
-	return ca, nil
 }
