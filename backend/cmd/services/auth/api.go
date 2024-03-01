@@ -2,11 +2,9 @@ package services
 
 import (
 	"context"
-	"net/http"
 	"server"
 	user "server/cmd/services/user"
 	gql_model "server/graph/model"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -38,21 +36,14 @@ func (as *AuthService) Login(ctx context.Context, input gql_model.LoginInput) (*
 		return nil, server.ErrGenAccessToken
 	}
 
-	ca, err := server.GetCookieAccessFromCtx(ctx)
+	refreshToken, err := as.AuthTokenService.CreateRefreshToken(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 
-	http.SetCookie(ca.Writer, &http.Cookie{
-		Name:     string(server.CookieAccessTokenKey),
-		Value:    token,
-		HttpOnly: true,
-		Path:     "/",
-		Expires:  time.Now().Add(AccessTokenLifetime),
-	})
-
 	return &gql_model.AuthPayload{
-		Token: &token,
-		User:  user,
+		AccessToken:  &token,
+		RefreshToken: &refreshToken,
+		User:         user,
 	}, nil
 }

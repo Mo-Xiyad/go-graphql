@@ -18,7 +18,7 @@ type IAuthService interface {
 // used in the middleware right now
 type IAuthTokenService interface {
 	CreateAccessToken(ctx context.Context, user *model.User) (string, error)
-	// CreateRefreshToken(ctx context.Context, user User, tokenID string) (string, error)
+	CreateRefreshToken(ctx context.Context, user *model.User) (string, error)
 	// ParseToken(ctx context.Context, payload string) (AuthToken, error)
 	ParseTokenFromRequest(ctx context.Context, r *http.Request) (*CustomClaims, error)
 	// ValidateToken(ctx context.Context, token string) (bool, error)

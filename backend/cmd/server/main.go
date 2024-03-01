@@ -33,7 +33,6 @@ func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
 	}))
 
 	return func(c *gin.Context) {
-
 		ctxWithDB := server.WithDB(c.Request.Context(), ctx.DB)
 		c.Request = c.Request.WithContext(ctxWithDB)
 
@@ -88,24 +87,20 @@ func main() {
 	}
 
 	router := gin.Default()
+	router.Use(server.GinContextToContextMiddleware())
 
 	//TODO: Fix CORS middleware
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:8080"}
+	config.AllowOrigins = []string{"*"}
 	config.AllowHeaders = []string{"Content-Type", "Authorization"}
 	config.AllowOriginFunc = func(origin string) bool { return true }
 	config.AllowCredentials = true
 	config.MaxAge = 86400
 
 	router.Use(cors.New(config))
-	router.Use(Middleware())
 
-	router.Use(server.GinContextToContextMiddleware())
-
-	// Repository layer to communicate with the database
 	userRepo := user.NewUserRepo(initializer.db)
 
-	// Service layer to handle business logic
 	authTokenService := auth.NewTokenService(initializer.conf)
 	authService := auth.NewAuthService(userRepo, authTokenService)
 	userService := user.NewUserService(userRepo)
@@ -113,6 +108,7 @@ func main() {
 	allowedOperations := map[string]bool{
 		"Login": true,
 	}
+
 	router.Use(authMiddleware(authTokenService, allowedOperations))
 
 	router.POST("/query", graphqlHandler(initializer.ctx, Services{

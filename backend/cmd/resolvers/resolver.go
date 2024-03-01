@@ -86,7 +86,8 @@ func mapUser(u model.User) *model.User {
 }
 func mapAuthResponse(a gql_model.AuthPayload) *gql_model.AuthPayload {
 	return &gql_model.AuthPayload{
-		Token: a.Token,
-		User:  mapUser(*a.User),
+		AccessToken:  a.AccessToken,
+		RefreshToken: a.RefreshToken,
+		User:         mapUser(*a.User),
 	}
 }

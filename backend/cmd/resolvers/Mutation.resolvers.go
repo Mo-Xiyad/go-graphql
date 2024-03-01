@@ -28,10 +28,12 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gql_model.Creat
 	return res, nil
 }
 
+// CreateCompany is the resolver for the createCompany field.
 func (r *mutationResolver) CreateCompany(ctx context.Context, input gql_model.CreateCompanyInput) (*model.Company, error) {
 	panic(fmt.Errorf("not implemented: CreateCompany - createCompany"))
 }
 
+// Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input gql_model.LoginInput) (*gql_model.AuthPayload, error) {
 	res, err := r.AuthService.Login(ctx, gql_model.LoginInput{
 		Email:    input.Email,

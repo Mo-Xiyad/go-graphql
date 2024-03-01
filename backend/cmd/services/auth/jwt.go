@@ -52,13 +52,13 @@ func (ts *TokenService) ParseTokenFromRequest(ctx context.Context, r *http.Reque
 	return claims, nil
 }
 
-func (ts *TokenService) CreateRefreshToken(ctx context.Context, user *model.User, tokenID string) (string, error) {
+func (ts *TokenService) CreateRefreshToken(ctx context.Context, user *model.User) (string, error) {
 	claims := CustomClaims{
 		RegisteredClaims: jwtGo.RegisteredClaims{
-			ExpiresAt: jwtGo.NewNumericDate(time.Now().Add(RefreshTokenLifetime)), // 1 hour expiry
+			ExpiresAt: jwtGo.NewNumericDate(time.Now().Add(RefreshTokenLifetime)),
 			Issuer:    "Feastly.com",
 			IssuedAt:  jwtGo.NewNumericDate(time.Now()),
-			ID:        tokenID,
+			ID:        uuid.New().String(), // TODO: Add this to the db
 		},
 		UserID: user.ID,
 	}
@@ -78,15 +78,13 @@ func (ts *TokenService) CreateAccessToken(ctx context.Context, user *model.User)
 			ExpiresAt: jwtGo.NewNumericDate(time.Now().Add(AccessTokenLifetime)),
 			Issuer:    "Feastly.com",
 			IssuedAt:  jwtGo.NewNumericDate(time.Now()),
-			ID:        uuid.New().String(),
+			ID:        uuid.New().String(), // TODO: Add this to the db
 		},
 		UserID: user.ID,
 	}
 
-	// Create the token
 	token := jwtGo.NewWithClaims(jwtGo.SigningMethodHS256, claims)
 
-	// Sign the token with the specified secret
 	tokenString, err := token.SignedString([]byte(ts.Conf.JWT.Secret))
 	if err != nil {
 		return "", err
