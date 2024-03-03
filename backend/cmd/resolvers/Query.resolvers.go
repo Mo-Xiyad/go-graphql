@@ -7,7 +7,6 @@ package resolvers
 import (
 	"context"
 	"fmt"
-	"server"
 	"server/graph"
 	"server/pkg/model"
 )
@@ -19,10 +18,6 @@ func (r *queryResolver) GetAllUsers(ctx context.Context) ([]*model.User, error) 
 
 // GetUser is the resolver for the GetUser field.
 func (r *queryResolver) GetUser(ctx context.Context, id string) (*model.User, error) {
-	if !server.CheckIsLoggedIn(ctx) {
-		return nil, server.ErrUnauthenticated
-	}
-
 	return r.UserService.GetUserByID(ctx, id)
 }
 
