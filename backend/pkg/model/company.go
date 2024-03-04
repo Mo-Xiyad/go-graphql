@@ -7,6 +7,8 @@ import (
 // User corresponds to a user in the database.
 type Company struct {
 	gorm.Model
-	Name   string
-	Domain string `gorm:"unique"`
+	Name           string
+	Email          string
+	PhoneNumber    string
+	OrganizationID string
 }

@@ -3,10 +3,12 @@ type Company {
   name: String!
   email: String!
   phoneNumber: String!
+  OrganizationID: String!
 }
 
 input CreateCompanyInput {
   name: String!
   email: String!
   phoneNumber: String!
+  OrganizationID: String! # registration number
 }

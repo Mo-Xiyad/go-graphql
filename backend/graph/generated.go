@@ -57,9 +57,11 @@ type ComplexityRoot struct {
 	}
 
 	Company struct {
-		Email func(childComplexity int) int
-		ID    func(childComplexity int) int
-		Name  func(childComplexity int) int
+		Email          func(childComplexity int) int
+		ID             func(childComplexity int) int
+		Name           func(childComplexity int) int
+		OrganizationID func(childComplexity int) int
+		PhoneNumber    func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -87,8 +89,6 @@ type AuthPayloadResolver interface {
 }
 type CompanyResolver interface {
 	ID(ctx context.Context, obj *model.Company) (string, error)
-
-	Email(ctx context.Context, obj *model.Company) (string, error)
 }
 type MutationResolver interface {
 	CreateUser(ctx context.Context, input gql_model.CreateUserInput) (*model.User, error)
@@ -165,6 +165,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Company.Name(childComplexity), true
+
+	case "Company.OrganizationID":
+		if e.complexity.Company.OrganizationID == nil {
+			break
+		}
+
+		return e.complexity.Company.OrganizationID(childComplexity), true
+
+	case "Company.phoneNumber":
+		if e.complexity.Company.PhoneNumber == nil {
+			break
+		}
+
+		return e.complexity.Company.PhoneNumber(childComplexity), true
 
 	case "Mutation.createCompany":
 		if e.complexity.Mutation.CreateCompany == nil {
@@ -386,11 +400,15 @@ var sources = []*ast.Source{
   id: ID!
   name: String!
   email: String!
+  phoneNumber: String!
+  OrganizationID: String!
 }
 
 input CreateCompanyInput {
   name: String!
   email: String!
+  phoneNumber: String!
+  OrganizationID: String! # registration number
 }
 `, BuiltIn: false},
 	{Name: "../schema/user.graphqls", Input: `type User {
@@ -783,7 +801,7 @@ func (ec *executionContext) _Company_email(ctx context.Context, field graphql.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Company().Email(rctx, obj)
+		return obj.Email, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -804,8 +822,96 @@ func (ec *executionContext) fieldContext_Company_email(ctx context.Context, fiel
 	fc = &graphql.FieldContext{
 		Object:     "Company",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Company_phoneNumber(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Company_phoneNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PhoneNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Company_phoneNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Company",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Company_OrganizationID(ctx context.Context, field graphql.CollectedField, obj *model.Company) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Company_OrganizationID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OrganizationID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Company_OrganizationID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Company",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -921,6 +1027,10 @@ func (ec *executionContext) fieldContext_Mutation_createCompany(ctx context.Cont
 				return ec.fieldContext_Company_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Company_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Company_phoneNumber(ctx, field)
+			case "OrganizationID":
+				return ec.fieldContext_Company_OrganizationID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Company", field.Name)
 		},
@@ -1162,6 +1272,10 @@ func (ec *executionContext) fieldContext_Query_GetAllCompanies(ctx context.Conte
 				return ec.fieldContext_Company_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Company_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Company_phoneNumber(ctx, field)
+			case "OrganizationID":
+				return ec.fieldContext_Company_OrganizationID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Company", field.Name)
 		},
@@ -1214,6 +1328,10 @@ func (ec *executionContext) fieldContext_Query_GetCompany(ctx context.Context, f
 				return ec.fieldContext_Company_name(ctx, field)
 			case "email":
 				return ec.fieldContext_Company_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Company_phoneNumber(ctx, field)
+			case "OrganizationID":
+				return ec.fieldContext_Company_OrganizationID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Company", field.Name)
 		},
@@ -3273,7 +3391,7 @@ func (ec *executionContext) unmarshalInputCreateCompanyInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email"}
+	fieldsInOrder := [...]string{"name", "email", "phoneNumber", "OrganizationID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -3294,6 +3412,20 @@ func (ec *executionContext) unmarshalInputCreateCompanyInput(ctx context.Context
 				return it, err
 			}
 			it.Email = data
+		case "phoneNumber":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("phoneNumber"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PhoneNumber = data
+		case "OrganizationID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("OrganizationID"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrganizationID = data
 		}
 	}
 
@@ -3507,41 +3639,20 @@ func (ec *executionContext) _Company(ctx context.Context, sel ast.SelectionSet, 
 				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "email":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Company_email(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
+			out.Values[i] = ec._Company_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
+		case "phoneNumber":
+			out.Values[i] = ec._Company_phoneNumber(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
 			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "OrganizationID":
+			out.Values[i] = ec._Company_OrganizationID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

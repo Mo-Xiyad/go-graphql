@@ -13,8 +13,10 @@ type AuthPayload struct {
 }
 
 type CreateCompanyInput struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name           string `json:"name"`
+	Email          string `json:"email"`
+	PhoneNumber    string `json:"phoneNumber"`
+	OrganizationID string `json:"OrganizationID"`
 }
 
 type CreateUserInput struct {
