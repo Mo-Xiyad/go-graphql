@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"server"
 	auth "server/cmd/services/auth"
+	company "server/cmd/services/company"
 	user "server/cmd/services/user"
 	gql_model "server/graph/model"
 	"server/pkg/model"
@@ -19,8 +20,9 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	AuthService auth.IAuthService
-	UserService user.IUserService
+	AuthService    auth.IAuthService
+	UserService    user.IUserService
+	CompanyService company.ICompanyService
 }
 
 func buildBadRequestError(ctx context.Context, err error) error {

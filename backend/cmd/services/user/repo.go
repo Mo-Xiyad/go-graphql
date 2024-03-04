@@ -40,14 +40,6 @@ func (u *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 	return &user, nil
 }
 
-// func (u *UserRepo) GetAll() ([]*model.User, error) {
-// 	var users []*model.User
-// 	if err := u.DB.Find(&users).Error; err != nil {
-// 		return nil, err
-// 	}
-// 	return users, nil
-// }
-
 // func (u *UserRepo) Update(ctx context.Context, user model.User) (*model.User, error) {
 // 	if err := u.DB.Save(&user).Error; err != nil {
 // 		return nil, err
