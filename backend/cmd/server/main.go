@@ -5,6 +5,7 @@ import (
 	"server"
 	"server/cmd/resolvers"
 	auth "server/cmd/services/auth"
+	company "server/cmd/services/company"
 	user "server/cmd/services/user"
 	"server/config"
 	generated "server/graph"
@@ -20,15 +21,17 @@ import (
 
 // define types for all services
 type Services struct {
-	AuthService auth.IAuthService
-	UserService user.IUserService
+	AuthService    auth.IAuthService
+	UserService    user.IUserService
+	CompanyService company.ICompanyService
 }
 
 func graphqlHandler(ctx *server.Context, services Services) gin.HandlerFunc {
 	h := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
 		Resolvers: &resolvers.Resolver{
-			AuthService: services.AuthService,
-			UserService: services.UserService,
+			AuthService:    services.AuthService,
+			UserService:    services.UserService,
+			CompanyService: services.CompanyService,
 		},
 	}))
 
@@ -100,10 +103,12 @@ func main() {
 	router.Use(cors.New(config))
 
 	userRepo := user.NewUserRepo(initializer.db)
+	companyRepo := company.NewCompanyRepo(initializer.db)
 
 	authTokenService := auth.NewTokenService(initializer.conf)
 	authService := auth.NewAuthService(userRepo, authTokenService)
 	userService := user.NewUserService(userRepo)
+	companyService := company.NewCompanyService(companyRepo)
 
 	allowedOperations := map[string]bool{
 		"Login": true,
@@ -112,8 +117,9 @@ func main() {
 	router.Use(authMiddleware(authTokenService, allowedOperations))
 
 	router.POST("/query", graphqlHandler(initializer.ctx, Services{
-		AuthService: authService,
-		UserService: userService,
+		AuthService:    authService,
+		UserService:    userService,
+		CompanyService: companyService,
 	}))
 	router.GET("/", playgroundHandler())
 
