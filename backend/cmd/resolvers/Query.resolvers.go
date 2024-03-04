@@ -23,7 +23,7 @@ func (r *queryResolver) GetUser(ctx context.Context, id string) (*model.User, er
 
 // GetAllCompanies is the resolver for the GetAllCompanies field.
 func (r *queryResolver) GetAllCompanies(ctx context.Context) ([]*model.Company, error) {
-	panic(fmt.Errorf("not implemented: GetAllCompanies - GetAllCompanies"))
+	return r.CompanyService.GetAllCompanies(ctx)
 }
 
 // GetCompany is the resolver for the GetCompany field.

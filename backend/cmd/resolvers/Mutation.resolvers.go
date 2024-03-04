@@ -7,7 +7,6 @@ package resolvers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"server"
 	"server/graph"
 	gql_model "server/graph/model"
@@ -30,7 +29,16 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gql_model.Creat
 
 // CreateCompany is the resolver for the createCompany field.
 func (r *mutationResolver) CreateCompany(ctx context.Context, input gql_model.CreateCompanyInput) (*model.Company, error) {
-	panic(fmt.Errorf("not implemented: CreateCompany - createCompany"))
+	res, err := r.CompanyService.CreateCompany(ctx, input)
+	if err != nil {
+		switch {
+		case errors.Is(err, server.ErrValidation):
+			return nil, buildBadRequestError(ctx, err)
+		default:
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 // Login is the resolver for the login field.
